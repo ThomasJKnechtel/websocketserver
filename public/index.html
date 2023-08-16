@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<script src="/socket.io/socket.io.js"></script>
+</head>
+
+<body>
+	
+<script>
+var socket = io('http://localhost:5050');
+socket.on('message', (message)=>{
+	console.log(message)
+})
+socket.emit( 'message', 'test' );
+
+</script>
+</body>
+
+</html>
