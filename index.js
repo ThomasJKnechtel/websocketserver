@@ -2,7 +2,8 @@ var app = require( 'express')();
 var http = require( 'http' ).createServer( app );
 const path = require('path')
 const { Queue, Worker } = require('bullmq')
-const {spawn} = require('child_process')
+const {spawn} = require('child_process');
+const { default: getPuzzle } = require('./getPuzzle');
 require('dotenv').config()
 
 const jobsSocketMap = new Map()
@@ -19,6 +20,7 @@ const puzzleGenQueue = new Queue('puzzleGenQueue', { connection: {
   }})
   
 const worker = new Worker('puzzleGenQueue', async job =>{
+
    return await generatePuzzles(job.data)
 }, { connection: {
     host: "localhost",
@@ -30,37 +32,92 @@ console.log( 'listening on *:' + PORT );
 io.on( 'connection', function( socket ) {
     console.log( 'a user has connected!' );
     socket.on('gamesPgns', async function(message){
-        
-        const job =  await puzzleGenQueue.add('game',  message)
-        console.log(job.id)
-        jobsSocketMap.set(job.id, socket)
+        const games = JSON.parse(message)
+        const job =  await puzzleGenQueue.add('game',  games.pop())
+        jobsSocketMap.set(job.id,{'socket':socket, 'games':games, 'amount':games.length} )
     })
-   
+    // socket.on('playPuzzle', async (puzzle_id)=>{
+    //   console.log(puzzle_id)
+    //   if(puzzle_id){
+    //     const puzzle = await getPuzzle(puzzle_id)
+    //     socket.emit('puzzle', puzzle)
+    //   }
+
+      
+    // })
+    
+    socket.on('play3', (puzzles)=>{
+        setTimeout(()=>{
+          socket.emit('timesUp')
+        }, 3000*60)
+      })
+      socket.on('play5', (puzzles)=>{
+        setTimeout(()=>{
+          socket.emit('timesUp')
+        }, 5000*60)
+      })
+    
     });
-worker.on('completed', (job, result)=>{
-    const socket = jobsSocketMap.get(job.id)
+    
+worker.on('completed', async (job, result)=>{
+    const {socket, games, amount} = jobsSocketMap.get(job.id)
     jobsSocketMap.delete(job.id)
-    socket.emit('puzzles', result)
+    const progress = amount - games.length
+    console.log('length:',JSON.parse(result).length)
+    if(JSON.parse(result).length>0){
+      console.log('puzzles:', result)
+      socket.emit('puzzles', result)
+    }
+    
+    
+    socket.emit('progress', JSON.stringify(progress*100/amount))
+    if(game = games.pop()){
+        newJob = await puzzleGenQueue.add('game', game)
+        jobsSocketMap.set(newJob.id, {'socket':socket, 'games':games, 'amount':amount})
+    }else{
+      socket.emit('puzzlesCompleted')
+    }
 })
-worker.on('error', (job, error)=>{
-    jobsSocketMap.delete(job.id)
-    console.log(error)
-}
-)
-worker.on('failed', (job, error)=>{
-    console.log(error)
+// // worker.on('error', async (job, error)=>{
+// //     console.log(error)
+// //     jobsSocketMap.delete(job.id)
+// //     const {socket, games, amount} = jobsSocketMap.get(job.id)
+// //     jobsSocketMap.delete(job.id)
+// //     const progress = amount - games.length
+
+// //     socket.emit('progress', JSON.stringify(progress*100/amount))
+// //     if(game = games.pop()){
+// //         newJob = await puzzleGenQueue.add('game', game)
+// //         jobsSocketMap.set(newJob.id, {'socket':socket, 'games':games, 'amount':amount})
+// //     }else{
+// //       socket.emit('puzzlesCompleted')
+// //     }
+    
+// // }
+// )
+worker.on('failed', async (job, error)=>{
+  const {socket, games, amount} = jobsSocketMap.get(job.id)
+  jobsSocketMap.delete(job.id)
+  const progress = amount - games.length
+
+  socket.emit('progress', JSON.stringify(progress*100/amount))
+  if(game = games.pop()){
+      newJob = await puzzleGenQueue.add('game', game)
+      jobsSocketMap.set(newJob.id, {'socket':socket, 'games':games, 'amount':amount})
+  }else{
+    socket.emit('puzzlesCompleted')
+  }
 })
 async function generatePuzzles(gamePgns){
   
-    console.log('test');
+  
     
     return new Promise((resolve, reject) => {
-      const pythonProcess = spawn('python', [path.join(process.env.WEBSITE_PATH,"/Modules/PuzzleGenerator/PuzzleGenerator.py"),gamePgns]);
+      const pythonProcess = spawn('python', [path.join(process.env.WEBSITE_PATH,"/Modules/PuzzleGenerator/PuzzleGenerator.py"), JSON.stringify([gamePgns])]);
       let result = null;
   
       pythonProcess.stdout.on('data', (data) => {
         result = data.toString();
-        console.log(result);
       });
   
       pythonProcess.stderr.on('data', (data) => {
@@ -70,7 +127,6 @@ async function generatePuzzles(gamePgns){
   
       pythonProcess.on('close', (code) => {
         if (code === 0) {
-          console.log(result);
           resolve(result);
         } else {
           console.log(`Python script exited with code ${code}`);

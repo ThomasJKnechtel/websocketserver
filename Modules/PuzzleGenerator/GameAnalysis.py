@@ -21,8 +21,9 @@ class GameAnalysis:
         self.engine.configure({"hash":hash})
         self.game = game
         self.puzzles = []
-        self.currentContinuation = ''
+        self.currentContinuation = []
         self.fen = self.board.fen()
+        self.turn = None
         self.currNode = None
         self.state = STATE.ANALYSE_MOVE
     def getAnalysis(self, topMoveCount: int, infoType):
@@ -45,18 +46,18 @@ class GameAnalysis:
         return False
     def isOnlyMove(self):
         """Check if only one winning move"""
-        if self.isWinning(1, 160) and not self.isWinning(0, 190):
+        if self.isWinning(1, 200):
             return False
-        if self.isWinning(0,180) and not self.isWinning(1, 180):
+        else:
             return True
-        return False
+        
     def stopEngine(self):
         """Stops engine"""
         self.engine.close()
     def getMove(self, ply: int)->chess.Move:
         """Returns best move at ply"""
         try:
-            return self.info[0]['pv'][0]
+            return self.info[0]['pv'].pop(0)
         except: return None
     def moveToString(self, move: chess.Move)->str:
         return self.board.san(move)
@@ -78,22 +79,23 @@ class GameAnalysis:
                     exit(1)
                 else:
                     self.getAnalysis(1, engine.INFO_SCORE)
-                    if self.isWinning(0, 180):
+                    if self.isWinning(0, 300):
                         self.state =STATE.COMPARE_MOVES
                     else: self.state =STATE.ANALYSE_MOVE
                     self.currNode = self.currNode.next()
             elif self.state== STATE.COMPARE_MOVES:
                 self.getAnalysis(2, engine.INFO_SCORE|engine.INFO_PV)
-                if self.isOnlyMove():
+                if self.isOnlyMove() and len(self.info)>1:
                     self.state = STATE.WINNING_TURN
                     self.fen=self.board.fen()
+                    self.turn = self.board.turn
                 else: self.state=STATE.ANALYSE_MOVE
             elif self.state== STATE.WINNING_TURN:
                 move = self.getMove(0)
                 if move == None:
                     self.state = STATE.PUZZLE_END
                 else:
-                    self.currentContinuation += self.moveToString(move)
+                    self.currentContinuation.append(self.moveToString(move))
                     self.updateBoard(move)
                     self.state = STATE.LOSING_TURN
                     
@@ -101,10 +103,11 @@ class GameAnalysis:
             elif self.state==STATE.LOSING_TURN:
                 move = self.getMove(1)
                 if move is not None:
+                    strMove = self.moveToString(move)
                     self.updateBoard(move)
                     self.getAnalysis(2, engine.INFO_SCORE|engine.INFO_PV)
                     if self.isOnlyMove():
-                        self.currentContinuation += self.moveToString(move)+" " 
+                        self.currentContinuation.append(strMove) 
                         self.state = STATE.WINNING_TURN
                     else: self.state = STATE.PUZZLE_END
                 else: 
@@ -112,8 +115,8 @@ class GameAnalysis:
             elif self.state==STATE.PUZZLE_END:
                 self.board.set_fen(self.fen)
                 if(len(self.currentContinuation)>0):
-                    self.puzzles.append({'white':self.game.headers["White"],'black': self.game.headers["Black"], 'date':self.game.headers["Date"],'fen': self.fen,'continuation':self.currentContinuation,'event': self.game.headers["Event"],'attempts':0,'success_rate':0,})
-                self.currentContinuation=''
+                    self.puzzles.append({'white':self.game.headers["White"],'black': self.game.headers["Black"], 'date':self.game.headers["Date"],'fen': self.fen,'continuation':self.currentContinuation.copy(),'event': self.game.headers["Event"],'attempts':0,'success_rate':0, 'turn':self.turn})
+                self.currentContinuation.clear()
                 self.state = STATE.ANALYSE_MOVE
             elif self.state == STATE.ALL_PUZZLES_GENERATED:
                 self.stopEngine()
