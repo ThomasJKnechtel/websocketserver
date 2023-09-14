@@ -1,8 +1,10 @@
 var app = require( 'express')();
 var http = require( 'http' ).createServer( app );
+const jwt=require('jsonwebtoken')
 require('dotenv').config()
 
 const {puzzleGenQueue, jobsSocketMap} = require('./puzzleWorker')
+const isAuthenticated = require('./authentication')
 
 var io = require( 'socket.io' )( http,
   {cors: {
@@ -27,6 +29,13 @@ io.on( 'connection', function( socket ) {
         setTimeout(()=>{
           socket.emit('timesUp')
         }, 5000*60)
+      })
+      socket.on('createChallenge', async (data)=>{
+        const { token} = data
+        console.log(token)
+ 
+        const result = await isAuthenticated(token)
+        console.log(result)
       })
     
     });

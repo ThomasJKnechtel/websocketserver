@@ -1,6 +1,6 @@
 const {spawn} = require('child_process');
 const path = require('path')
-
+require('dotenv').config()
 async function generatePuzzles(gamePgns){
     return new Promise((resolve, reject) => {
       const pythonProcess = spawn('python', [path.join(process.env.WEBSITE_PATH,"/Modules/PuzzleGenerator/PuzzleGenerator.py"), JSON.stringify([gamePgns])]);
