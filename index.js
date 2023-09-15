@@ -5,6 +5,7 @@ require('dotenv').config()
 
 const {puzzleGenQueue, jobsSocketMap} = require('./puzzleWorker')
 const isAuthenticated = require('./authentication');
+const initializeChallenge = require('./createChallenge');
 
 
 const store = createClient();
@@ -21,8 +22,15 @@ const io = require( 'socket.io' )( http,
   }}
 );
 
-subscribe.subscribe('challengesChannel', (message, channel)=>{
-  io.to('challengesRoom').emit('challenges', message)
+subscribe.subscribe('challengesChannel', async (message, channel)=>{
+  const challenges = await store.lRange('challenges', 0, -1)
+  console.log(challenges)
+  if(challenges){
+    io.to('challengesRoom').emit('challenges', challenges)
+  }else{
+    io.to('challengesRoom').emit('challenges', [])
+  }
+  
 })
 io.on( 'connection', function( socket ) {
     console.log( 'a user has connected!' );
@@ -42,25 +50,37 @@ io.on( 'connection', function( socket ) {
           socket.emit('timesUp')
         }, 5000*60)
       })
+      /**
+       * If authenticated Initialize Challenge 
+       */
       socket.on('createChallenge', async (data)=>{
-        const { token, challenge} = data
+        let { token, challenge} = data
         const user = await isAuthenticated(token)
+        const id = `${user.sub}_${Date.now()}`
+        challenge = {...challenge, challenger : user.name, id}
         if(user){
-          challenge.challenger = user.name
+          initializeChallenge(challenge, subscribe, publish, store, io, socket)
+        }
+      })
+      socket.on('getChallenges',async ()=>{
+        socket.join('challengesRoom')
+        const challenges = await store.lRange('challenges', 0, -1)
+        if(challenges) socket.emit('challenges', challenges)
+      })
+      socket.on('challengeAccepted', async (message)=>{
+        const { token, challenge} = message
+        const user = await isAuthenticated(token)
+        if(user){ 
           try{
-            await store.rPush('challenges', JSON.stringify(challenge))
-            const challenges = await store.lRange('challenges',0, -1)
-            publish.publish('challengesChannel', JSON.stringify(challenges))
+            console.log(`Game_${challenge.id}`)
+            socket.join(`Game_${challenge.id}`)
+            publish.publish(`Game_${challenge.id}`, JSON.stringify(challenge))
           }catch(err){
             console.log(err)
           }
-          
-          
+         
         }
-      })
-      socket.on('getChallenges', ()=>{
-        socket.join('challengesRoom')
-        
+
       })
       
 });
