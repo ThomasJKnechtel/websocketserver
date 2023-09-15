@@ -1,17 +1,29 @@
-var app = require( 'express')();
-var http = require( 'http' ).createServer( app );
-const jwt=require('jsonwebtoken')
+const app = require( 'express')();
+const http = require( 'http' ).createServer( app );
+const { createClient }=require('redis');
 require('dotenv').config()
 
 const {puzzleGenQueue, jobsSocketMap} = require('./puzzleWorker')
-const isAuthenticated = require('./authentication')
+const isAuthenticated = require('./authentication');
 
-var io = require( 'socket.io' )( http,
+
+const store = createClient();
+const subscribe = createClient()
+const publish = createClient()
+store.connect()
+subscribe.connect()
+publish.connect()
+
+const io = require( 'socket.io' )( http,
   {cors: {
     origin: 'http://localhost:3000',
     methods: ['GET', 'POST']
   }}
 );
+
+subscribe.subscribe('challengesChannel', (message, channel)=>{
+  io.to('challengesRoom').emit('challenges', message)
+})
 io.on( 'connection', function( socket ) {
     console.log( 'a user has connected!' );
     socket.on('gamesPgns', async function(message){
@@ -31,19 +43,33 @@ io.on( 'connection', function( socket ) {
         }, 5000*60)
       })
       socket.on('createChallenge', async (data)=>{
-        const { token} = data
-        console.log(token)
- 
-        const result = await isAuthenticated(token)
-        console.log(result)
+        const { token, challenge} = data
+        const user = await isAuthenticated(token)
+        if(user){
+          challenge.challenger = user.name
+          try{
+            await store.rPush('challenges', JSON.stringify(challenge))
+            const challenges = await store.lRange('challenges',0, -1)
+            publish.publish('challengesChannel', JSON.stringify(challenges))
+          }catch(err){
+            console.log(err)
+          }
+          
+          
+        }
       })
-    
-    });
+      socket.on('getChallenges', ()=>{
+        socket.join('challengesRoom')
+        
+      })
+      
+});
     
 
 const PORT = 5050;
 
 
-http.listen( PORT, function() {
+http.listen( PORT, async function() {
   console.log( 'listening on *:' + PORT );
+  
 });
