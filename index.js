@@ -6,7 +6,7 @@ require('dotenv').config()
 const {puzzleGenQueue, jobsSocketMap} = require('./puzzleWorker')
 const isAuthenticated = require('./authentication');
 const initializeChallenge = require('./createChallenge');
-
+const removeOldUserChallenges = require('./removeOldChallenges')
 
 const store = createClient();
 const subscribe = createClient()
@@ -14,6 +14,7 @@ const publish = createClient()
 store.connect()
 subscribe.connect()
 publish.connect()
+
 
 const io = require( 'socket.io' )( http,
   {cors: {
@@ -32,8 +33,9 @@ subscribe.subscribe('challengesChannel', async (message, channel)=>{
   }
   
 })
-io.on( 'connection', function( socket ) {
-    console.log( 'a user has connected!' );
+io.on( 'connection', async function( socket ) {
+    console.log('A user has connected')
+    let user_id = null
     socket.on('gamesPgns', async function(message){
         const games = JSON.parse(message)
         const job =  await puzzleGenQueue.add('game',  games.pop())
@@ -51,15 +53,18 @@ io.on( 'connection', function( socket ) {
         }, 5000*60)
       })
       /**
-       * If authenticated Initialize Challenge 
+       * If authenticated Initialize Challenge and Store User Challenge
        */
       socket.on('createChallenge', async (data)=>{
         let { token, challenge} = data
         const user = await isAuthenticated(token)
         const id = `${user.sub}_${Date.now()}`
+        user_id = user.sub
         challenge = {...challenge, challenger : user.name, id}
         if(user){
+  
           initializeChallenge(challenge, subscribe, publish, store, io, socket)
+          removeOldUserChallenges(user_id, challenge, store, publish)
         }
       })
       socket.on('getChallenges',async ()=>{
@@ -81,6 +86,21 @@ io.on( 'connection', function( socket ) {
          
         }
 
+      })
+      /**
+       * On Disconnect remove outgoing user challenges
+       */
+      socket.on('disconnect', async ()=>{
+        if(user_id){
+          const challenge = await store.hGet(`user:${user_id}`, 'challenge')
+          if(challenge){
+            store.lRem('challenges', 0, challenge).then(result => console.log(result))
+            store.hDel(`user:${user_id}`, 'challenges')
+            publish.publish('challengesChannel', '')
+          } 
+          
+          
+        }
       })
       
 });
