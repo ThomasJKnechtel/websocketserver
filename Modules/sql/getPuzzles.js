@@ -1,8 +1,8 @@
 const db = require('./sqlConnect')
 
 async function getPuzzlesByIds(puzzleIds){
-    puzzleIds.push(null)
-    const query = `EXEC GetPuzzlesById @idList = ${JSON.stringify(puzzleIds)}`
+    const input = JSON.stringify([...puzzleIds, null])
+    const query = `EXEC GetPuzzlesById @idList = ${input}`
     console.log(query)
     const result = await db.query(query)
     return result.recordsets[0]

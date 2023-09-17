@@ -1,5 +1,5 @@
-const getPuzzlesByIds = require('./Modules/sql/getPuzzles')
-const {puzzleStartState, playMove, addMoveToGameState} = require('./Modules/puzzleState/setPuzzleState')
+const getPuzzlesByIds = require('../sql/getPuzzles')
+const {puzzleStartState, playMove, addMoveToGameState} = require('./setPuzzleState')
 const {Chess} = require('chess.js')
 /**
  * 

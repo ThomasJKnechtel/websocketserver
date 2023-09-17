@@ -33,8 +33,8 @@ function playMove(gameState, fen){
 const puzzleStartState = function(fen, continuation, turn){
     return {
         "start_time": Date.now(),
-        "continuation" : continuation,
-        "nextMove" : continuation[0],
+        "continuation" : JSON.parse(continuation),
+        "nextMove" : JSON.parse(continuation)[0],
         "state" : "PLAYERS_TURN",
         "fen" : fen,
         "playerTurn" : turn?"w":"b",

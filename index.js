@@ -5,9 +5,14 @@ require('dotenv').config()
 
 const {puzzleGenQueue, jobsSocketMap} = require('./puzzleWorker')
 const isAuthenticated = require('./authentication');
-const initializeChallenge = require('./createChallenge');
-const removeOldUserChallenges = require('./removeOldChallenges')
-const db = require('./Modules/sql/sqlConnect')
+const addChallenge = require('./Controllers/createChallenge');
+const removeOldUserChallenges = require('./Controllers/removeOldChallenges')
+const db = require('./Modules/sql/sqlConnect');
+const initializeGame = require('./Controllers/initializeGameState');
+const {manageGameState} = require('./gameState');
+const acceptChallenge = require('./Controllers/acceptChallenge');
+const removeAcceptedChallenge = require('./Controllers/removeAcceptedChallenge');
+
 const store = createClient();
 const subscribe = createClient()
 const publish = createClient()
@@ -32,6 +37,11 @@ subscribe.subscribe('challengesChannel', async (message, channel)=>{
   }
   
 })
+~subscribe.subscribe(`Games`, async (id, channel)=>{
+  const gameState = await store.get(`Game:${id}`)
+  console.log(gameState)
+  io.to(`Game:${id}`).emit('game_message', gameState)
+})
 io.on( 'connection', async function( socket ) {
     console.log('A user has connected')
     let user_id = null
@@ -55,14 +65,17 @@ io.on( 'connection', async function( socket ) {
        * If authenticated Initialize Challenge and Store User Challenge
        */
       socket.on('createChallenge', async (data)=>{
-        let { token, challenge} = data
+        const { token, challenge} = data
         const user = await isAuthenticated(token)
         const id = `${user.sub}_${Date.now()}`
         user_id = user.sub
-        challenge = {...challenge, challenger : user.name, id, challengerId: user.sub}
         if(user){
-          initializeChallenge(challenge, subscribe, publish, store, io, socket)
-          removeOldUserChallenges(user_id, challenge, store, publish)
+          await addChallenge({...challenge, challenger: user.name, id},  store)
+          await removeOldUserChallenges(user_id, {...challenge, challenger: user.name, id}, store)
+          await initializeGame({...challenge, challenger : user.name, id, challengerId: user.sub}, store, id)
+          await store.hSet(`user:${user_id}`, 'challenge', JSON.stringify({...challenge, challenger: user.name, id}) )
+          publish.publish('challengesChannel','')
+          socket.join(`Game:${id}`)
         }
       })
       socket.on('getChallenges',async ()=>{
@@ -72,12 +85,21 @@ io.on( 'connection', async function( socket ) {
       })
       socket.on('challengeAccepted', async (message)=>{
         let { token, challenge} = message
-        const { id, opponentPuzzles: opponentPuzzleIds, challengerPuzzleIds,  timeControl} = challenge
+        const { id, opponentPuzzles: opponentPuzzleIds} = challenge
         const user = await isAuthenticated(token)
         if(user){ 
           try{
+  
             socket.join(`Game:${id}`)
-            await publish.publish(`Game:${id}`, JSON.stringify({type:'ACCEPTED', data:{opponent:user.name, opponentPuzzleIds, opponentId:user.sub, id, challengerPuzzleIds, timeControl}}))
+            const gameState = JSON.parse(await store.get(`Game:${id}`))
+            console.log(opponentPuzzleIds.length)
+            if(opponentPuzzleIds.length === gameState.challengerPuzzleIds.length){
+              await acceptChallenge(opponentPuzzleIds, gameState, user.sub, store)
+              await removeAcceptedChallenge(store, gameState.challengerPuzzleIds, gameState.timeControl, gameState.challenger, gameState.id)
+              publish.publish('Games', id)
+              publish.publish('challengesChannel', '')
+            }
+           
           }catch(err){
             console.log(err)
           }
@@ -90,18 +112,21 @@ io.on( 'connection', async function( socket ) {
         const user = await isAuthenticated(token)
         
         if(user){
-          console.log(user.sub)
           const gameId = await store.hGet(`user:${user.sub}`, 'gameId')
-          
-          await socket.join(`Game:${gameId}`)
           if(gameId){
-            
-            await publish.publish(`Game:${gameId}`, JSON.stringify({type:'PLAYER_CONNECTED', data:{id:gameId, player_id: user.sub}}))
+            await socket.join(`Game:${gameId}`)
+            const gameState = JSON.parse(await store.get(`Game:${gameId}`))
+            const newGameState = manageGameState({type: 'PLAYER_CONNECTED', data:{player_id: user.sub}}, gameState)
+            await store.set(`Game:${gameId}`, JSON.stringify(newGameState))
+            publish.publish('Games', gameId)
           }
           socket.on('ADD_MOVE', async (message)=>{
             const {move} = message
             const gameId = await store.hGet(`user:${user.sub}`, 'gameId')
-            await publish.publish(`Game:${gameId}`, JSON.stringify({type:'ADD_MOVE', data:{id:gameId, player_id: user_id, move}}))
+            const gameState = JSON.parse(await store.get(`Game:${gameId}`))
+            const newGameState = manageGameState({type: 'ADD_MOVE', data:{player_id: user.sub, move}}, gameState)
+            await store.set(`Game:${gameId}`, JSON.stringify(newGameState))
+            publish.publish('Games', gameId)
           })
         }
         
