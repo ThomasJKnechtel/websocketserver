@@ -25,7 +25,6 @@ const io = require( 'socket.io' )( http,
 
 subscribe.subscribe('challengesChannel', async (message, channel)=>{
   const challenges = await store.lRange('challenges', 0, -1)
-  console.log(challenges)
   if(challenges){
     io.to('challengesRoom').emit('challenges', challenges)
   }else{
@@ -86,18 +85,42 @@ io.on( 'connection', async function( socket ) {
         }
 
       })
+      socket.on('ConnectToGame', async (message)=>{
+        const {token} = message
+        const user = await isAuthenticated(token)
+        
+        if(user){
+          console.log(user.sub)
+          const gameId = await store.hGet(`user:${user.sub}`, 'gameId')
+          
+          await socket.join(`Game:${gameId}`)
+          if(gameId){
+            
+            await publish.publish(`Game:${gameId}`, JSON.stringify({type:'PLAYER_CONNECTED', data:{id:gameId, player_id: user.sub}}))
+          }
+          socket.on('ADD_MOVE', async (message)=>{
+            const {move} = message
+            const gameId = await store.hGet(`user:${user.sub}`, 'gameId')
+            await publish.publish(`Game:${gameId}`, JSON.stringify({type:'ADD_MOVE', data:{id:gameId, player_id: user_id, move}}))
+          })
+        }
+        
+      })
       /**
        * On Disconnect remove outgoing user challenges
        */
       socket.on('disconnect', async ()=>{
         if(user_id){
           const challenge = await store.hGet(`user:${user_id}`, 'challenge')
+          const gameId = await store.hGet(`user:${user_id}`, 'gameId')
           if(challenge){
             store.lRem('challenges', 0, challenge).then(result => console.log(result))
             store.hDel(`user:${user_id}`, 'challenges')
             publish.publish('challengesChannel', '')
           } 
-          
+          if(gameId){
+            publish.publish(`Game:${gameId}`, JSON.stringify({type:'PLAYER_DISCONNECTED', data:{id:gameId, player_id: user_id}}))
+          }
           
         }
       })

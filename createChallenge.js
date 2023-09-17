@@ -18,7 +18,6 @@ async function initializeChallenge(challenge, subscribe, publish, store, io, soc
             await subscribe.subscribe(`Game:${id}`, async (message, channel)=>{
               await manageGameState(JSON.parse(message), store, publish)
               const data = await store.hGetAll(`Game:${id}`)
-              console.log('data: %s',JSON.stringify(data))
               io.to(`Game:${id}`).emit('game_message', JSON.stringify(data))
             })
             publish.publish('challengesChannel', JSON.stringify(challenges))
@@ -28,23 +27,6 @@ async function initializeChallenge(challenge, subscribe, publish, store, io, soc
           }
           
     
-}
-/**
- * When challenge is accepted notify challenger and acceptee and update challenges
- * @param {The Accepted Challenge} challenge 
- * @param {SocketIO} io 
- * @param {RedisClient} store 
- * @param {RedisClient} publish 
- */
-async function challengeAccepted(challenge, io, store, publish){
-  try{
-    
-    io.to(`Game_${id}`).emit('game_message', challenge )
-    publish.publish('challengesChannel', 'test')
-  }catch(err){
-    console.log(err)
-  }
-  
 }
 
 module.exports = initializeChallenge
