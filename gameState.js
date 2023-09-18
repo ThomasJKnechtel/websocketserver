@@ -6,6 +6,7 @@ const gameStartState = {
     timeControl:' ',
     startTime:' ',
     id: ' ',
+    numberOfPuzzles: 0,
 
     challenger: ' ',
     challengerId : ' ',
@@ -13,9 +14,9 @@ const gameStartState = {
     challengerPuzzles: '[]',
     challengerPuzzleStats: '[]',
     challengerPuzzleState: '{}',
-    challengerConnection: "CONNECTED",
     challengerPuzzlesCompleted: 0,
     challengerState: "",
+    challengerRating:null,
 
     opponent: ' ',
     opponentId:' ',
@@ -23,39 +24,39 @@ const gameStartState = {
     opponentPuzzles: '[]',
     opponentPuzzleStats: '[]',
     opponentPuzzlState:'{}',
-    opponentConnection: "CONNECTED",
     opponentPuzzlesCompleted: 0,
-    opponentState:""
+    opponentState:"",
+    challengerRating:null
 }
 function manageGameState(message, gameState){
     const {type, data} = message
     if(type==="INITIALIZE"){
         const {id, challenger, challengerId, timeControl, challengerPuzzleIds} = data
-        return {...gameStartState, id, challenger, challengerId, timeControl, challengerPuzzleIds}
+        return {...gameStartState, id, challenger, challengerId, timeControl, challengerPuzzleIds, numberOfPuzzles: challengerPuzzleIds.length}
     }else if(type === "ACCEPTED"){
-        const { opponentPuzzles, challengerPuzzles} = data
+        const { opponentPuzzles, challengerPuzzles, challengerRating, opponentRating, opponent} = data
         if(opponentPuzzles.length === challengerPuzzles.length){
             const challengerPuzzle = challengerPuzzles.pop()
             const opponentPuzzleState = puzzleStartState(challengerPuzzle.fen, challengerPuzzle.continuation, challengerPuzzle.turn)
             const opponentPuzzle = opponentPuzzles.pop()
             const challengerPuzzleState = puzzleStartState(opponentPuzzle.fen, opponentPuzzle.continuation, opponentPuzzle.turn)
-            return {...gameState, opponentPuzzles: [...opponentPuzzles], challengerPuzzles:[...challengerPuzzles], opponentPuzzleState, challengerPuzzleState, state:"IN_PROGRESS" }
+            return {...gameState, opponentPuzzles: [...opponentPuzzles], challengerPuzzles:[...challengerPuzzles], opponentPuzzleState, challengerPuzzleState, state:"WAITING", challengerRating, opponentRating, opponent }
         }
         
         return gameState
     }else if(type === "PLAYER_CONNECTED"){
         const { player_id } = data
         if(player_id === gameState.challengerId){
-            return { ...gameState, 'challengerConnection': "CONNECTED"}
+            return { ...gameState, challengerState: "CONNECTED"}
         }else{
-            return { ...gameState, 'opponentConnection': "CONNECTED"}
+            return { ...gameState, opponentState: "CONNECTED"}
         }
     }else if(type === "PLAYER_DISCONNECTED"){
         const { player_id } = data
         if(player_id === gameState.challengerId){
-            return { ...gameState, 'challengerConnection': "DISCONNECTED"}
+            return { ...gameState, challengerState: "DISCONNECTED"}
         }else{
-            return { ...gameState, 'opponentConnection': "DISCONNECTED"}
+            return { ...gameState, opponentState: "DISCONNECTED"}
         }
     }else if(type === "ADD_MOVE"){
         const {player_id, move} = data
@@ -102,6 +103,18 @@ function manageGameState(message, gameState){
             }
             return {...gameState, opponentPuzzleState: puzzleState}
         }
+    }else if(type === "PLAYER_READY"){
+        const { player_id } = data
+        let newGameState = {...gameState}
+        if(player_id === gameState.challengerId){
+           newGameState.challengerState = "READY"
+        }else{
+            newGameState.opponentState =  "READY"
+        }
+        if(newGameState.challengerState === "READY" && newGameState.opponentState === "READY"){
+            newGameState.state = "IN_PROGRESS"
+        }
+        return newGameState
     }
 }
 module.exports = {manageGameState, gameStartState}
