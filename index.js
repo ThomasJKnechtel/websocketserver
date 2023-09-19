@@ -39,12 +39,13 @@ subscribe.subscribe('challengesChannel', async (message, channel)=>{
 })
 subscribe.subscribe(`Games`, async (id, channel)=>{
   const gameState = JSON.parse(await store.get(`Game:${id}`))
-  const {  challenger, opponent, state, challengerPuzzleState, opponentPuzzleState, challengerRating, opponentRating, timeControl, opponentState, challengerState, numberOfPuzzles } = gameState
-  let message = {id, challenger, opponent, state, challengerRating, opponentRating, timeControl, opponentState, challengerState, numberOfPuzzles }
-  if(state === "IN_PROGRESS"){
-    message.challengerPuzzleState = {fen: challengerPuzzleState.fen, playerTurn: challengerPuzzleState.playerTurn}
-    message.opponentPuzzleState = {fen: opponentPuzzleState.fen, playerTurn: challengerPuzzleState.playerTurn}
+  const {  challenger, opponent, state, challengerPuzzleState, opponentPuzzleState, challengerRating, opponentRating, timeControl, opponentState, challengerState, numberOfPuzzles, opponentPuzzlesCompleted, challengerPuzzlesCompleted, opponentRatingChange, challengerRatingChange } = gameState
+  let message = {id, challenger, opponent, state, challengerRating, opponentRating, timeControl, opponentState, challengerState, numberOfPuzzles, opponentPuzzlesCompleted, challengerPuzzlesCompleted, opponentRatingChange, challengerRatingChange }
+  if(state === "IN_PROGRESS" || state === "FINISHED"){
+    message.challengerPuzzleState = {fen: challengerPuzzleState.fen, playerTurn: challengerPuzzleState.playerTurn, state: challengerPuzzleState.state}
+    message.opponentPuzzleState = {fen: opponentPuzzleState.fen, playerTurn: opponentPuzzleState.playerTurn, state: opponentPuzzleState.state}
   }
+  console.log(message)
   io.to(`Game:${id}`).emit('game_message', message)
 })
 io.on( 'connection', async function( socket ) {
@@ -114,7 +115,6 @@ io.on( 'connection', async function( socket ) {
       socket.on('ConnectToGame', async (message)=>{
         const {token} = message
         const user = await isAuthenticated(token)
-        
         if(user){
           const gameId = await store.hGet(`user:${user.sub}`, 'gameId')
           user_id = user.sub
@@ -129,7 +129,9 @@ io.on( 'connection', async function( socket ) {
             const {move} = message
             const gameId = await store.hGet(`user:${user.sub}`, 'gameId')
             const gameState = JSON.parse(await store.get(`Game:${gameId}`))
+            console.log(move)
             const newGameState = manageGameState({type: 'ADD_MOVE', data:{player_id: user.sub, move}}, gameState)
+            
             await store.set(`Game:${gameId}`, JSON.stringify(newGameState))
             publish.publish('Games', gameId)
           })
@@ -137,6 +139,23 @@ io.on( 'connection', async function( socket ) {
             const gameId = await store.hGet(`user:${user.sub}`, 'gameId')
             const gameState = JSON.parse(await store.get(`Game:${gameId}`))
             const newGameState = manageGameState({type: 'PLAYER_READY', data:{player_id: user.sub}}, gameState)
+            if(newGameState.state === "IN_PROGRESS"){
+               setTimeout(async ()=>{
+                const game = JSON.parse(await store.get(`Game:${gameId}`))
+                if(game){
+                  const timesUpState = manageGameState({type: 'TIMES_UP', data:{}}, game)
+                  await store.set(`Game:${gameId}`, JSON.stringify(timesUpState))
+                  publish.publish('Games', gameId)
+                }
+              }, newGameState.timeControl==="3Minute"?(3*60*1000):(5*60*1000))
+            }
+            await store.set(`Game:${gameId}`, JSON.stringify(newGameState))
+            publish.publish('Games', gameId)
+          })
+          socket.on('RESIGNED', async ()=>{
+            const gameId = await store.hGet(`user:${user.sub}`, 'gameId')
+            const gameState = JSON.parse(await store.get(`Game:${gameId}`))
+            const newGameState = manageGameState({type: 'RESIGN', data:{player_id: user.sub}}, gameState)
             await store.set(`Game:${gameId}`, JSON.stringify(newGameState))
             publish.publish('Games', gameId)
           })

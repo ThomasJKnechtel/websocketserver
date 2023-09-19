@@ -1,4 +1,3 @@
-const manageGameState = require('../gameState')
 
 /**
  * Allows challenge to be accepted and viewed by subscribers
