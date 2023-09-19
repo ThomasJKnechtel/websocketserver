@@ -5,7 +5,8 @@ const gameStartState = {
     state: 'LOOKING_FOR_OPPONENT',
     winner: '',
     timeControl:' ',
-    startTime:' ',
+    startTime:null,
+    finishTime: null,
     id: ' ',
     numberOfPuzzles: 0,
 
@@ -36,6 +37,11 @@ const gameStartState = {
 }
 function manageGameState(message, gameState){
     const {type, data} = message
+    if(gameState.state === "IN_PROGRESS"){
+        if(gameState.finishTime < Date.now()){
+            return updateGameState(gameState, true)
+        }
+    }
     if(type==="INITIALIZE"){
         const {id, challenger, challengerId, timeControl, challengerPuzzleIds} = data
         return {...gameStartState, id, challenger, challengerId, timeControl, challengerPuzzleIds, numberOfPuzzles: challengerPuzzleIds.length}
@@ -140,7 +146,8 @@ function manageGameState(message, gameState){
                 newGameState.state = "IN_PROGRESS"
                 newGameState.challengerState = "CONNECTED"
                 newGameState.opponentState = "CONNECTED"
-               
+                newGameState.startTime = Date.now()
+                newGameState.finishTime = (newGameState.timeControl==="3Minute")?(Date.now()+3*60*1000):(Date.now()+3*60*1000)
             }
         }
         return newGameState
@@ -160,11 +167,6 @@ function manageGameState(message, gameState){
             newGameState.state = "FINISHED"
         }
         return newGameState
-    }else if(type==="TIMES_UP"){
-        if(gameState.state === "IN_PROGRESS"){
-            return updateGameState(gameState, true)
-        }
-        return gameState
     }
 }
 function updateGameState(gameState, timesUp){

@@ -39,8 +39,8 @@ subscribe.subscribe('challengesChannel', async (message, channel)=>{
 })
 subscribe.subscribe(`Games`, async (id, channel)=>{
   const gameState = JSON.parse(await store.get(`Game:${id}`))
-  const {  challenger, opponent, state, challengerPuzzleState, opponentPuzzleState, challengerRating, opponentRating, timeControl, opponentState, challengerState, numberOfPuzzles, opponentPuzzlesCompleted, challengerPuzzlesCompleted, opponentRatingChange, challengerRatingChange } = gameState
-  let message = {id, challenger, opponent, state, challengerRating, opponentRating, timeControl, opponentState, challengerState, numberOfPuzzles, opponentPuzzlesCompleted, challengerPuzzlesCompleted, opponentRatingChange, challengerRatingChange }
+  const {  challenger, opponent, state, challengerPuzzleState, opponentPuzzleState, challengerRating, opponentRating, timeControl, opponentState, challengerState, numberOfPuzzles, opponentPuzzlesCompleted, challengerPuzzlesCompleted, opponentRatingChange, challengerRatingChange, startTime, finishTime } = gameState
+  let message = {id, challenger, opponent, state, challengerRating, opponentRating, timeControl, opponentState, challengerState, numberOfPuzzles, opponentPuzzlesCompleted, challengerPuzzlesCompleted, opponentRatingChange, challengerRatingChange, startTime, finishTime }
   if(state === "IN_PROGRESS" || state === "FINISHED"){
     message.challengerPuzzleState = {fen: challengerPuzzleState.fen, playerTurn: challengerPuzzleState.playerTurn, state: challengerPuzzleState.state}
     message.opponentPuzzleState = {fen: opponentPuzzleState.fen, playerTurn: opponentPuzzleState.playerTurn, state: opponentPuzzleState.state}
@@ -139,16 +139,6 @@ io.on( 'connection', async function( socket ) {
             const gameId = await store.hGet(`user:${user.sub}`, 'gameId')
             const gameState = JSON.parse(await store.get(`Game:${gameId}`))
             const newGameState = manageGameState({type: 'PLAYER_READY', data:{player_id: user.sub}}, gameState)
-            if(newGameState.state === "IN_PROGRESS"){
-               setTimeout(async ()=>{
-                const game = JSON.parse(await store.get(`Game:${gameId}`))
-                if(game){
-                  const timesUpState = manageGameState({type: 'TIMES_UP', data:{}}, game)
-                  await store.set(`Game:${gameId}`, JSON.stringify(timesUpState))
-                  publish.publish('Games', gameId)
-                }
-              }, newGameState.timeControl==="3Minute"?(3*60*1000):(5*60*1000))
-            }
             await store.set(`Game:${gameId}`, JSON.stringify(newGameState))
             publish.publish('Games', gameId)
           })
@@ -156,6 +146,13 @@ io.on( 'connection', async function( socket ) {
             const gameId = await store.hGet(`user:${user.sub}`, 'gameId')
             const gameState = JSON.parse(await store.get(`Game:${gameId}`))
             const newGameState = manageGameState({type: 'RESIGN', data:{player_id: user.sub}}, gameState)
+            await store.set(`Game:${gameId}`, JSON.stringify(newGameState))
+            publish.publish('Games', gameId)
+          })
+          socket.on('TIMES_UP', async ()=>{
+            const gameId = await store.hGet(`user:${user.sub}`, 'gameId')
+            const gameState = JSON.parse(await store.get(`Game:${gameId}`))
+            const newGameState = manageGameState({type: 'TIMES_UP', data:{}}, gameState)
             await store.set(`Game:${gameId}`, JSON.stringify(newGameState))
             publish.publish('Games', gameId)
           })
@@ -186,6 +183,8 @@ io.on( 'connection', async function( socket ) {
       })
       
 });
+
+
     
 
 const PORT = 5050;
