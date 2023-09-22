@@ -56,7 +56,10 @@ subscribe.subscribe(`Games`, async (id, channel)=>{
     opponent.ratingChange = B
     store.set(`Game:${id}`, JSON.stringify({state, challenger, opponent}))
   }
-
+  if(state.state === "WAITING"){
+    challenger.puzzleState.fen = ""
+    opponent.puzzleState.fen = ""
+  } 
   let message = {state, challenger: {...challenger, puzzleState:{...challenger.puzzleState, continuation: null, nextMove: null}}, opponent: {...opponent, puzzleState:{ ...opponent.puzzleState, continuation: null, nextMove: null}} }
   io.to(`Game:${id}`).emit('game_message', message)
 })
