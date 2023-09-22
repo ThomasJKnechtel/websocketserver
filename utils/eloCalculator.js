@@ -10,18 +10,19 @@ function Probability(rating1, rating2) {
   
     // Case 1: Player A wins
     if (result === 'A') {
-      return {playerA: K * (1 - Pa), playerB: K * (0 - Pb)};
+      return {A: Math.floor(K * (1 - Pa)), B: Math.floor(K * (0 - Pb))};
     }
     // Case 2: Player B wins
     else if (result === 'B') {
       Ra = Ra + K * (0 - Pa);
       Rb = Rb + K * (1 - Pb);
-      return {playerA: K * (0 - Pa), playerB: K * (1 - Pb)}
+      return {A: Math.floor(K * (0 - Pa)), B: Math.floor(K * (1 - Pb))}
     }
     // Case 3: Draw
-    else if (result === 'draw') {
-      return {playerA: K*(0.5 - Pa), playerB: K * (0.5 - Pb)}
+    else if (result === 'DRAW') {
+      return {A: Math.floor(K*(0.5 - Pa)),B: Math.floor(K * (0.5 - Pb))}
     }
+    return {A: 0, B: 0} 
   }
   
 module.exports = EloChange

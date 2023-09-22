@@ -30,7 +30,7 @@ function playMove(gameState, fen){
     }
 }
 
-const puzzleStartState = function(fen, continuation, turn){
+const puzzleStartState = function(fen, continuation, turn, puzzleId, rating){
     return {
         "start_time": Date.now(),
         "continuation" : JSON.parse(continuation),
@@ -41,7 +41,9 @@ const puzzleStartState = function(fen, continuation, turn){
         "currentTurn" : turn?"w":"b",
         "startingFEN" : fen, 
         "currentMoveNumber" : 0,
-        "finish_time":null
+        "finish_time":null,
+        "puzzleId": puzzleId, 
+        "rating": rating
     }
     
 }

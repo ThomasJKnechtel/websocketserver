@@ -9,9 +9,12 @@ const addChallenge = require('./Controllers/createChallenge');
 const removeOldUserChallenges = require('./Controllers/removeOldChallenges')
 const db = require('./Modules/sql/sqlConnect');
 const initializeGame = require('./Controllers/initializeGameState');
-const {manageGameState} = require('./gameState');
+const {manageGameState} = require('./Modules/gameState/gameState');
 const acceptChallenge = require('./Controllers/acceptChallenge');
 const removeAcceptedChallenge = require('./Controllers/removeAcceptedChallenge');
+const updateRatings = require('./Modules/sql/updateRatings');
+const updatePuzzleRatings = require('./Modules/sql/updatePuzzleRatings');
+const EloChange = require('./utils/eloCalculator');
 
 const store = createClient();
 const subscribe = createClient()
@@ -27,7 +30,9 @@ const io = require( 'socket.io' )( http,
     methods: ['GET', 'POST']
   }}
 );
-
+/**
+ * On new challenge send challenges to users looking for games
+ */
 subscribe.subscribe('challengesChannel', async (message, channel)=>{
   const challenges = await store.lRange('challenges', 0, -1)
   if(challenges){
@@ -37,17 +42,25 @@ subscribe.subscribe('challengesChannel', async (message, channel)=>{
   }
   
 })
+/**
+ * On game update send message to players and if game over save result
+ */
 subscribe.subscribe(`Games`, async (id, channel)=>{
-  const gameState = JSON.parse(await store.get(`Game:${id}`))
-  const {  challenger, opponent, state, challengerPuzzleState, opponentPuzzleState, challengerRating, opponentRating, timeControl, opponentState, challengerState, numberOfPuzzles, opponentPuzzlesCompleted, challengerPuzzlesCompleted, opponentRatingChange, challengerRatingChange, startTime, finishTime } = gameState
-  let message = {id, challenger, opponent, state, challengerRating, opponentRating, timeControl, opponentState, challengerState, numberOfPuzzles, opponentPuzzlesCompleted, challengerPuzzlesCompleted, opponentRatingChange, challengerRatingChange, startTime, finishTime }
-  if(state === "IN_PROGRESS" || state === "FINISHED"){
-    message.challengerPuzzleState = {fen: challengerPuzzleState.fen, playerTurn: challengerPuzzleState.playerTurn, state: challengerPuzzleState.state}
-    message.opponentPuzzleState = {fen: opponentPuzzleState.fen, playerTurn: opponentPuzzleState.playerTurn, state: opponentPuzzleState.state}
+  const {state, challenger, opponent} = JSON.parse(await store.get(`Game:${id}`))
+  if(state.state === "FINISHED" && !state.saved){
+    const {A, B} = EloChange(challenger.rating, opponent.rating, 40, (challenger.state==="WON")?"A":(challenger.state==="DRAW")?"DRAW":"B")
+    updateRatings(challenger.id, challenger.rating+A, opponent.opponentId, opponent.rating+B)
+    updatePuzzleRatings(opponent.puzzleStats, challenger.puzzleStats)
+    state.saved = true
+    challenger.ratingChange = A
+    opponent.ratingChange = B
+    store.set(`Game:${id}`, JSON.stringify({state, challenger, opponent}))
   }
-  console.log(message)
+
+  let message = {state, challenger: {...challenger, puzzleState:{...challenger.puzzleState, continuation: null, nextMove: null}}, opponent: {...opponent, puzzleState:{ ...opponent.puzzleState, continuation: null, nextMove: null}} }
   io.to(`Game:${id}`).emit('game_message', message)
 })
+
 io.on( 'connection', async function( socket ) {
     console.log('A user has connected')
     let user_id = null
@@ -76,14 +89,15 @@ io.on( 'connection', async function( socket ) {
         const id = `${user.sub}_${Date.now()}`
         user_id = user.sub
         if(user){
-          await addChallenge({...challenge, challenger: user.name, id},  store)
-          await removeOldUserChallenges(user_id, {...challenge, challenger: user.name, id}, store)
-          await initializeGame({...challenge, challenger : user.name, id, challengerId: user.sub}, store, id)
-          await store.hSet(`user:${user_id}`, 'challenge', JSON.stringify({...challenge, challenger: user.name, id}) )
+          await addChallenge({...challenge, challenger: user.username, id},  store)
+          await removeOldUserChallenges(user_id, {...challenge, challenger: user.username, id}, store)
+          await initializeGame({...challenge, challenger : user.username, id, challengerId: user.sub}, store, id)
+          await store.hSet(`user:${user_id}`, 'challenge', JSON.stringify({...challenge, challenger: user.username, id}) )
           publish.publish('challengesChannel','')
           socket.join(`Game:${id}`)
         }
       })
+      
       socket.on('getChallenges',async ()=>{
         socket.join('challengesRoom')
         const challenges = await store.lRange('challenges', 0, -1)
@@ -98,9 +112,9 @@ io.on( 'connection', async function( socket ) {
             user_id = user.sub
             socket.join(`Game:${id}`)
             const gameState = JSON.parse(await store.get(`Game:${id}`))
-            if(opponentPuzzleIds.length === gameState.challengerPuzzleIds.length){
-              await acceptChallenge(opponentPuzzleIds, gameState, user.sub, store)
-              await removeAcceptedChallenge(store, gameState.challengerPuzzleIds, gameState.timeControl, gameState.challenger, gameState.id)
+            if(opponentPuzzleIds.length === gameState.state.numberOfPuzzles){
+              await acceptChallenge(opponentPuzzleIds, gameState, user.sub, user.username, store)
+              await removeAcceptedChallenge(store, gameState.challenger.puzzleIds, gameState.state.timeControl, gameState.challenger.username, gameState.id)
               publish.publish('Games', id)
               publish.publish('challengesChannel', '')
             }
@@ -160,7 +174,7 @@ io.on( 'connection', async function( socket ) {
         
       })
       /**
-       * On Disconnect remove outgoing user challenges
+       * On Disconnect remove outgoing user challenges and notify opponent that player disconnected
        */
       socket.on('disconnect', async ()=>{
         if(user_id){
