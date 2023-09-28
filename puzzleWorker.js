@@ -1,5 +1,5 @@
 const { Queue, Worker } = require('bullmq')
-const { generatePuzzles } = require('./generatePuzzles')
+const { generatePuzzles } = require('./Modules/generatePuzzles')
 
 const jobsSocketMap = new Map()
 

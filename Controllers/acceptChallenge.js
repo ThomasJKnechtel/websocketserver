@@ -1,6 +1,6 @@
 const getPuzzlesByIds = require("../Modules/sql/getPuzzles")
 const getUserById = require("../Modules/sql/getUser")
-const { manageGameState } = require("../Modules/gameState/gameState")
+const { manageGameState } = require("../Models/gameState")
 
 async function acceptChallenge( opponentPuzzleIds, gameState, opponentId, opponentUsername, store){
     const challengerPuzzles = await getPuzzlesByIds(gameState.challenger.puzzleIds)

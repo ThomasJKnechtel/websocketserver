@@ -1,11 +1,11 @@
 
 const { createClient }=require('redis');
 
-async function connectToReddis(){
-    const client = createClient();
-    client.on('error', err => console.log('Redis Client Error', err));
-    await client.connect();
-    return client
-}
+const store = createClient();
+const subscribe = createClient()
+const publish = createClient()
+store.connect()
+subscribe.connect()
+publish.connect()
 
-module.exports=connectToReddis
+module.exports={store, subscribe, publish}

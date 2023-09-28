@@ -1,6 +1,6 @@
-const {puzzleStartState, playMove, addMoveToGameState} = require('../puzzleState/setPuzzleState')
+const {puzzleStartState, playMove, addMoveToGameState} = require('../Modules/puzzleState/setPuzzleState')
 const {Chess} = require('chess.js')
-const EloChange = require('../../utils/eloCalculator')
+const EloChange = require('../utils/eloCalculator')
 const gameStartState = {
     state: {
         state: 'LOOKING_FOR_OPPONENT',
