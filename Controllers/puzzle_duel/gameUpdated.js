@@ -24,10 +24,6 @@ async function onGameFinish(gameState){
   const {A, B} = EloChange(challenger.rating, opponent.rating, 40, (challenger.state==="WON")?"A":(challenger.state==="DRAW")?"DRAW":"B")
   updateRatings(challenger.id, challenger.rating+A, opponent.id, opponent.rating+B)
   updatePuzzleRatings(opponent.puzzleStats, challenger.puzzleStats)
-  console.log(JSON.stringify({
-    dailyStats: [],
-    lastUpdated: ""
-  }))
   const challengerStats = await getUserStats(challenger.id)
   const opponentStats = await getUserStats(opponent.id)
   updateStats(challenger.id, JSON.parse(challengerStats.user_stats), challenger.rating+A )
