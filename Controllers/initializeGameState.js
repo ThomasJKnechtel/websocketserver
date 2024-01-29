@@ -1,4 +1,4 @@
-const {manageGameState, gameStartState} = require("../Modules/gameState/gameState")
+const {manageGameState, gameStartState} = require("../Models/gameState")
 
 
 
