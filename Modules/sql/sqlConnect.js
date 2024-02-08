@@ -3,7 +3,7 @@ const sqlConfig = {
     user:'MyPuzzles',
     password: process.env.PASSWORD,
     server: 'localhost',
-    database: 'MyPuzzles.com',
+    database: 'MyPuzzles',
     options:{
         encrypt: true,
         trustServerCertificate: true
