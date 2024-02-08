@@ -2,7 +2,7 @@ from datetime import datetime
 from distutils.log import error
 
 from os import stat
-from turtle import st
+
 from typing import List, Tuple
 from chess import Move
 from chess.pgn import Game, read_game
@@ -10,8 +10,6 @@ from dotenv import dotenv_values
 import chess.engine as engine
 
 import time
-
-import pyodbc
 import json
 import io
 from sys import argv

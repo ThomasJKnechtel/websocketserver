@@ -14,7 +14,7 @@ const challengeAccepted = require('./Routes/acceptChallenge');
 
 const io = require( 'socket.io' )( http,
   {cors: {
-    origin: 'http://localhost:3000',
+    origin: '*',
     methods: ['GET', 'POST']
   }}
 );
@@ -84,7 +84,7 @@ io.on( 'connection', async function( socket ) {
 
     
 
-const PORT = 5050;
+const PORT = 7000;
 
 
 http.listen( PORT, async function() {

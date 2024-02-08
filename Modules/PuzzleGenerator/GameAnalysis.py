@@ -16,7 +16,7 @@ class GameAnalysis:
         self.board = game.board()
         self.previous_cp = 0
         self.info = None
-        self.engine = engine.SimpleEngine.popen_uci(r"C:\Users\Thomas\OneDrive\JS Files\stockfish-9-win\Windows\stockfish_9_x64.exe")
+        self.engine = engine.SimpleEngine.popen_uci(r"/usr/games/stockfish")
         self.engine.configure({"Threads":threads})
         self.engine.configure({"hash":hash})
         self.game = game
@@ -61,7 +61,7 @@ class GameAnalysis:
         except: return None
     def moveToString(self, move: chess.Move)->str:
         return self.board.san(move)
-    def analyseGame(self)->list[Tuple[str,str,str,str, str,int,int, int]]:
+    def analyseGame(self)->list:
         """Generates puzzles for a game
         >>>analyseGame(getGames("game"))
         [[['d8d5'], '3r4/2R2pkp/1q2pbp1/p7/1p2Q3/1P3P2/4P2P/2R4K b - - 9 37'], [['b4e4'], '8/7R/4p3/4k1p1/1R6/1P3P2/2r4b/5K2 w - - 0 52'], ... 

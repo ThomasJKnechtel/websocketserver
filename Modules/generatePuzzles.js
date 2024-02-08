@@ -3,7 +3,7 @@ const path = require('path')
 require('dotenv').config()
 async function generatePuzzles(gamePgns){
     return new Promise((resolve, reject) => {
-      const pythonProcess = spawn('python', [path.join(process.env.WEBSITE_PATH,"/Modules/PuzzleGenerator/PuzzleGenerator.py"), JSON.stringify([gamePgns])]);
+      const pythonProcess = spawn('/usr/bin/python3', [path.join(process.env.WEBSITE_PATH,"/Modules/PuzzleGenerator/PuzzleGenerator.py"), JSON.stringify([gamePgns])]);
       let result = null;
   
       pythonProcess.stdout.on('data', (data) => {
