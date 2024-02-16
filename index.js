@@ -176,7 +176,7 @@ io.on( 'connection', async function( socket ) {
           const challenge = JSON.parse(await store.get(challengeId))
           store.del(challengeId)
           const challengerNotifications = JSON.parse(await store.get(`Notifications:${challenge.challengerId}`))
-          const challengeResponse = {opponentId:session.sub, opponentUsername: session.username, challengeId}
+          const challengeResponse = {opponentId:session.sub, opponentUsername: session.username, challengeId, challengeAccepted:true}
           challengerNotifications.challengeAccepted = challengeResponse
           challengerNotifications.newNotification = challengeResponse
           await store.set(`Notifications:${challenge.challengerId}`, JSON.stringify(challengerNotifications))
