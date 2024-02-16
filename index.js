@@ -209,7 +209,7 @@ io.on( 'connection', async function( socket ) {
 
 
 
-http.listen( PORT, async function() {
+http.listen( process.env.PORT, async function() {
   console.log( 'listening on *:' + process.env.PORT );
   
 });
