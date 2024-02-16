@@ -1,5 +1,6 @@
 const app = require( 'express')();
 const http = require( 'http' ).createServer( app );
+const cors = require('cors')
 require('dotenv').config()
 
 const createChallenge = require('./Routes/createChallenge')
@@ -16,6 +17,7 @@ const getFriendsById = require('./Modules/sql/getFriends');
 const addFriends = require('./Modules/sql/addFriend');
 const initializeGame = require('./Controllers/puzzle_duel/initializeGameState');
 
+app.use(cors())
 const io = require( 'socket.io' )( http,
   {cors: {
     origin: '*',
