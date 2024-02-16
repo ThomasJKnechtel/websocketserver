@@ -1,8 +1,8 @@
 const isAuthenticated = require('../Controllers/authentication')
-const removeOldUserChallenges = require('../Controllers/removeOldChallenges')
-const initializeGame = require('../Controllers/initializeGameState')
+const removeOldUserChallenges = require('../Controllers/puzzle_duel/removeOldChallenges')
+const initializeGame = require('../Controllers/puzzle_duel/initializeGameState')
 const {store, publish} = require('../connectToReddis')
-const addChallenge = require('../Controllers/addChallenge')
+const addChallenge = require('../Controllers/puzzle_duel/addChallenge')
 
 /**
  * If player is authenticated add challenge to queue, initialize game and remove user's old challenges

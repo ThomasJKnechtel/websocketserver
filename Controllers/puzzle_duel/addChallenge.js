@@ -1,4 +1,4 @@
-const { store } = require("../connectToReddis")
+const { store } = require("../../connectToReddis")
 
 async function addChallenge(challenge){
         try{

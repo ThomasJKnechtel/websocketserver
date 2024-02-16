@@ -1,6 +1,6 @@
-const acceptChallenge = require("../Controllers/acceptChallenge")
+const acceptChallenge = require("../Controllers/puzzle_duel/acceptChallenge")
 const isAuthenticated = require("../Controllers/authentication")
-const removeAcceptedChallenge = require("../Controllers/removeAcceptedChallenge")
+const removeAcceptedChallenge = require("../Controllers/puzzle_duel/removeAcceptedChallenge")
 const { store, publish } = require("../connectToReddis")
 
 

@@ -120,7 +120,7 @@ function manageGameState(message, gameState){
                         ...oldState, 
                         state: "IN_PROGRESS", 
                         startTime: Date.now(), 
-                        finishTime: (oldState.timeControl==="3Minute")?(Date.now()+3*60*1000):(Date.now()+3*60*1000)
+                        finishTime: (oldState.timeControl==="3Minute")?(Date.now()+3*60*1000):(Date.now()+5*60*1000)
                     },
                     challenger: {
                         ...oldChallenger,
@@ -260,7 +260,6 @@ function puzzleFinished(playerState){
     return {...playerState, puzzlesAttempted, puzzlesCompleted, puzzleStats, state: "FINISHED"}
 }
 function checkWinner(numberOfPuzzles, challengerPuzzlesAttempted, challengerPuzzlesCompleted, opponentPuzzlesAttempted, opponentPuzzlesCompleted, timesUp){
-    console.log("challenger Attempted: %i challenter Completed: %i opponentAttempted: %i opponentCompleted: %i", challengerPuzzlesAttempted, challengerPuzzlesCompleted, opponentPuzzlesAttempted, opponentPuzzlesCompleted)
     const challenerMaxScore = challengerPuzzlesCompleted + (numberOfPuzzles-challengerPuzzlesAttempted)
     const opponentMaxScore = opponentPuzzlesCompleted + (numberOfPuzzles-opponentPuzzlesAttempted)
     if(timesUp){

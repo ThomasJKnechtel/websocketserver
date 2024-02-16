@@ -1,4 +1,4 @@
-const { puzzleGenQueue, jobsSocketMap } = require("../puzzleWorker")
+const { puzzleGenQueue, jobsSocketMap } = require("../../puzzleWorker")
 
 async function generatePuzzles(message, socket){
     const games = JSON.parse(message)

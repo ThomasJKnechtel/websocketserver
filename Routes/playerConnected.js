@@ -3,7 +3,7 @@ const isAuthenticated = require("../Controllers/authentication")
 const playerReady = require("../Controllers/puzzle_duel/playerReady")
 const playerResigned = require("../Controllers/puzzle_duel/playerResigned")
 const timesUp = require("../Controllers/puzzle_duel/timesUp")
-const connectPlayer = require("../Controllers/connectPlayer")
+const connectPlayer = require("../Controllers/puzzle_duel/connectPlayer")
 
 async function playerConnected(message, socket){
     const {token} = message

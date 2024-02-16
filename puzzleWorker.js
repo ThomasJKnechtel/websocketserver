@@ -38,6 +38,7 @@ worker.on('completed', async (job, result)=>{
     }
 })
 worker.on('failed', async (job, error)=>{
+  console.log(error)
   const {socket, games, amount} = jobsSocketMap.get(job.id)
   jobsSocketMap.delete(job.id)
   const progress = amount - games.length

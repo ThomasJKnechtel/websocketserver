@@ -1,5 +1,5 @@
-const { store, publish } = require("../connectToReddis")
-const { manageGameState } = require("../Models/gameState")
+const { store, publish } = require("../../connectToReddis")
+const { manageGameState } = require("../../Models/gameState")
 
 async function connectPlayer(message, user_id, socket){
     const gameId = await store.hGet(`user:${user_id}`, 'gameId')
