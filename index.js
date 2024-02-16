@@ -208,12 +208,8 @@ io.on( 'connection', async function( socket ) {
 });
 
 
-    
-
-const PORT = 5050;
-
 
 http.listen( PORT, async function() {
-  console.log( 'listening on *:' + PORT );
+  console.log( 'listening on *:' + process.env.PORT );
   
 });
