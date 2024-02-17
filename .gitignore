@@ -4,4 +4,4 @@
 websocketserver.exe
 .env
 *.spec
-/__pycache__
+__pycache__/
