@@ -45,7 +45,7 @@ def analyseGameMeasurements(fileOutput: str)->None:
 
 
 
-def analyseGames(gamePgns):
+def analyseGames(gamePgns, stockfishPath):
     """analyze games for puzzles and returns list of puzzles"""
     puzzles = [] 
    
@@ -53,7 +53,7 @@ def analyseGames(gamePgns):
         pgnBuffer = io.StringIO(pgn)
         game = read_game(pgnBuffer)
         if(game != None):
-            puzzles+= GameAnalysis(game, 16,4).analyseGame()
+            puzzles+= GameAnalysis(game, 16,4, stockfishPath).analyseGame()
         
         
     return puzzles
@@ -63,7 +63,7 @@ def analyseGames(gamePgns):
 if __name__ == '__main__':
     
     gamePgns = list(json.loads(argv[1]))
-    
-    print(json.dumps(analyseGames(gamePgns)))
+    stockfishPath = argv[2]
+    print(json.dumps(analyseGames(gamePgns, stockfishPath)))
     
     

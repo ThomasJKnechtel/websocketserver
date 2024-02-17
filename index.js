@@ -1,8 +1,7 @@
-const app = require( 'express')();
-const http = require( 'http' ).createServer( app );
-const cors = require('cors')
+
 require('dotenv').config()
 
+const { http, io } = require('./server')
 const createChallenge = require('./Routes/createChallenge')
 const {store, subscribe, publish} = require('./connectToReddis');
 const playerConnected = require('./Routes/playerConnected');
@@ -17,13 +16,6 @@ const getFriendsById = require('./Modules/sql/getFriends');
 const addFriends = require('./Modules/sql/addFriend');
 const initializeGame = require('./Controllers/puzzle_duel/initializeGameState');
 
-app.use(cors())
-const io = require( 'socket.io' )( http,
-  {cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  }}
-);
 subscribe.subscribe('notificationsChannel', async (id, channel)=>{
   const notifications = JSON.parse(await store.get(`Notifications:${id}`))
   io.to(`notificationsRoom:${id}`).emit('notifications', JSON.stringify(notifications))
@@ -213,3 +205,4 @@ http.listen( process.env.PORT, async function() {
   console.log( 'listening on *:' + process.env.PORT );
   
 });
+

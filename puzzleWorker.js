@@ -1,7 +1,6 @@
 const { Queue, Worker } = require('bullmq')
-const { generatePuzzles } = require('./Modules/generatePuzzles')
-
-const jobsSocketMap = new Map()
+const {io} = require('./server')
+const {generatePuzzles} = require('./Modules/generatePuzzles')
 
 const puzzleGenQueue = new Queue('puzzleGenQueue', { connection: {
     host: "localhost",
@@ -9,8 +8,8 @@ const puzzleGenQueue = new Queue('puzzleGenQueue', { connection: {
   }})
 
 const worker = new Worker('puzzleGenQueue', async job =>{
-
-    return await generatePuzzles(job.data)
+    const {currentGame, games} = job.data
+    return await generatePuzzles(games[currentGame])
   }, 
   { connection: {
     host: "localhost",
@@ -19,37 +18,27 @@ const worker = new Worker('puzzleGenQueue', async job =>{
 )
 
 worker.on('completed', async (job, result)=>{
-    const {socket, games, amount} = jobsSocketMap.get(job.id)
-    jobsSocketMap.delete(job.id)
-    const progress = amount - games.length
-    console.log('length:',JSON.parse(result).length)
-    if(JSON.parse(result).length>0){
-      console.log('puzzles:', result)
-      socket.emit('puzzles', result)
+  if(job){
+    let {requestId, currentGame, games} = job.data
+    const puzzles = JSON.parse(result)
+    currentGame += 1
+    const progress = currentGame/games.length
+    io.to(requestId).emit('puzzlesGenerated', {puzzles, progress })
+    if(progress<1){
+      puzzleGenQueue.add(`${requestId}_${currentGame}`, {requestId, currentGame, games})
     }
+  }
     
-    
-    socket.emit('progress', JSON.stringify(progress*100/amount))
-    if(game = games.pop()){
-        newJob = await puzzleGenQueue.add('game', game)
-        jobsSocketMap.set(newJob.id, {'socket':socket, 'games':games, 'amount':amount})
-    }else{
-      socket.emit('puzzlesCompleted')
-    }
 })
 worker.on('failed', async (job, error)=>{
-  console.log(error)
-  const {socket, games, amount} = jobsSocketMap.get(job.id)
-  jobsSocketMap.delete(job.id)
-  const progress = amount - games.length
+  if(job){
+    console.log(error)
+    let {requestId, currentGame, games} = job.data
+    currentGame += 1
+    const progress = currentGame/games.length
+    io.to(requestId).emit('puzzlesGenerated', {puzzles:[], progress })
 
-  socket.emit('progress', JSON.stringify(progress*100/amount))
-  if(game = games.pop()){
-      newJob = await puzzleGenQueue.add('game', game)
-      jobsSocketMap.set(newJob.id, {'socket':socket, 'games':games, 'amount':amount})
-  }else{
-    socket.emit('puzzlesCompleted')
   }
 })
 
-module.exports = {worker, jobsSocketMap, puzzleGenQueue}
+module.exports = {worker, puzzleGenQueue}

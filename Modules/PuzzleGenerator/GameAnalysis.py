@@ -12,11 +12,11 @@ class STATE(Enum):
         ALL_PUZZLES_GENERATED=5
 class GameAnalysis:
     """Provides Analysis of a chess game"""
-    def __init__(self,  game: Game, hash:int, threads: int) -> None:
+    def __init__(self,  game: Game, hash:int, threads: int, stockfishPath: str) -> None:
         self.board = game.board()
         self.previous_cp = 0
         self.info = None
-        self.engine = engine.SimpleEngine.popen_uci(r"/usr/games/stockfish")
+        self.engine = engine.SimpleEngine.popen_uci(stockfishPath)
         self.engine.configure({"Threads":threads})
         self.engine.configure({"hash":hash})
         self.game = game
