@@ -44,6 +44,7 @@ subscribe.subscribe(`Games`, async (id, channel)=>{
 
 
 io.on( 'connection', async function( socket ) {
+  console.log('User Connected')
     let [user_id, username] = [null, null]
 
     socket.on('getNotifications', async (token)=>{
